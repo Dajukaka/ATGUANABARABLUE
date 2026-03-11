@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Guanabara Atendimento</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #050505; color: white; text-align: center; margin: 0; overflow: hidden; }
+        .chamada-ativa { 
+            background: linear-gradient(180deg, #8b0000 0%, #4a0000 100%); 
+            padding: 60px 20px; font-size: 90px; font-weight: bold; 
+            border-bottom: 5px solid #d4af37; text-shadow: 4px 4px 10px #000;
+        }
+        .historico { height: calc(100vh - 250px); overflow-y: auto; padding: 25px; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+        .card { 
+            background: #151515; border: 2px solid #d4af37; width: 85%; max-width: 700px; 
+            padding: 25px; border-radius: 15px; display: flex; justify-content: space-between; 
+            align-items: center; animation: surge 0.4s ease-out;
+        }
+        @keyframes surge { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        .card-nome { font-size: 40px; font-weight: bold; }
+        .card-hora { color: #d4af37; font-size: 20px; font-family: monospace; }
+        
+        /* Menu Lateral */
+        .menu-config { position: fixed; bottom: 25px; right: 25px; }
+        .btn-engrenagem { background: #d4af37; border: none; width: 60px; height: 60px; border-radius: 50%; cursor: pointer; font-size: 30px; box-shadow: 0 4px 10px #000; }
+        .painel-config { 
+            display: none; position: absolute; bottom: 75px; right: 0; 
+            background: #1a1a1a; padding: 20px; border-radius: 12px; border: 2px solid #d4af37; width: 300px; text-align: left;
+        }
+        label { color: #d4af37; font-weight: bold; font-size: 14px; }
+        input { width: 92%; padding: 12px; margin: 8px 0; background: #000; color: #fff; border: 1px solid #444; border-radius: 5px; font-size: 16px; }
+        .btn-acao { background: #d4af37; color: #000; border: none; width: 100%; padding: 12px; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 10px; }
+        
+        #entrada { position: absolute; top: -100px; opacity: 0; }
+    </style>
+</head>
+<body onclick="document.getElementById('entrada').focus()">
+
+    <div class="chamada-ativa" id="display">AGUARDANDO...</div>
+    <input type="text" id="entrada" autofocus onchange="processar(this.value)">
+
+    <div class="historico" id="log"></div>
+
+    <div class="menu-config">
+        <button class="btn-engrenagem" onclick="toggleMenu()">⚙</button>
+        <div class="painel-config" id="menu">
+            <label>1. Código RF Recebido:</label>
+            <input type="text" id="cCod" placeholder="Ex: 8263608">
+            <label>2. Identificação:</label>
+            <input type="text" id="cNome" value="Máquina ">
+            <button class="btn-acao" onclick="salvar()">SALVAR NO SISTEMA</button>
+            <button class="btn-acao" style="background:#444; color:#fff; margin-top:20px;" onclick="exportar()">BAIXAR BACKUP</button>
+        </div>
+    </div>
+
+    <audio id="som" src="https://www.soundjay.com/buttons/beep-07a.mp3"></audio>
+
+<script>
+    let db = JSON.parse(localStorage.getItem('guanabara_db')) || {};
+
+    function toggleMenu() {
+        const m = document.getElementById('menu');
+        m.style.display = (m.style.display === 'block') ? 'none' : 'block';
+    }
+
+    function salvar() {
+        const c = document.getElementById('cCod').value.trim();
+        const n = document.getElementById('cNome').value.trim();
+        if(c && n) {
+            db[c] = n;
+            localStorage.setItem('guanabara_db', JSON.stringify(db));
+            alert(n + " cadastrada!");
+            document.getElementById('cCod').value = "";
+            document.getElementById('cNome').value = "Máquina "; // Reseta mantendo o prefixo
+            toggleMenu();
+        }
+    }
+
+    function processar(v) {
+        if(!v) return;
+        const nome = db[v] || "CÓDIGO: " + v;
+        const hora = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        document.getElementById('display').innerText = nome;
+        document.getElementById('som').play();
+
+        const log = document.getElementById('log');
+        log.insertAdjacentHTML('afterbegin', `
+            <div class="card">
+                <div class="card-nome">${nome}</div>
+                <div class="card-hora">${hora}</div>
+            </div>`);
+        
+        if (log.children.length > 20) log.removeChild(log.lastChild);
+        
+        const input = document.getElementById('entrada');
+        input.value = "";
+        setTimeout(() => input.focus(), 10);
+    }
+
+    function exportar() {
+        const blob = new Blob([JSON.stringify(db)], {type: "application/json"});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "backup_guanabara.json";
+        a.click();
+    }
+
+    setInterval(() => document.getElementById('entrada').focus(), 1000);
+</script>
+</body>
+</html>
